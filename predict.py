@@ -22,6 +22,19 @@ def predictRight(char,predictor,model):
 
 	return False
 
+def getLongestPredictor(seen,model):
+	if seen != '':
+		predictor = seen[-1]
+		if len(seen) > 1:
+			for i in range(len(seen)-2,-1,-1):
+				seq = seen[i:len(seen)]
+				if seq in model:
+					predictor = seq
+				else:
+					break
+
+	return predictor
+
 def updateModel(char,seen,predictor,predictionIsRight,model):
 	if seen != '':
 		for i in range(len(predictor)):
@@ -39,7 +52,6 @@ def updateModel(char,seen,predictor,predictionIsRight,model):
 					tally(charLastTime,model[newKey])
 
 def outputDic(dic):
-	sys.stdout.write('Model:\n')
 	for key in dic:
 		sys.stdout.write(key + ': ' + repr(dic[key]) + '\n')
 
@@ -55,10 +67,11 @@ with open(inputFileName) as inputFile:
 		updateModel(char,seen,predictor,predictionIsRight,model)
 		
 		seen += char
+
 		if predictionIsRight:
 			predictor += char
 		else:
-			predictor = seen[-1]
+			predictor = getLongestPredictor(seen,model)
 		
 		char = inputFile.read(1)
 		#sys.stdout.write('\n')
