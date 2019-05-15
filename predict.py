@@ -1,79 +1,99 @@
 import sys
 
-def tally(key,dic):
-	if key in dic:
-		dic[key] += 1
-	else:
-		dic[key] = 1
+k = 1.0
 
-def getPredictions(predictor,model):
-	if predictor in model:
-		return model[predictor].keys()
+def updateActiveSequences(actSeqs,char,vocab):
+	completedSeqs = set([])
+	seqsToPrune = set([])
 
-	return None
+	# update currently active sequences
+	for (seq,index) in actSeqs.items():
+		if seq[index] == char:
+			actSeqs[seq] += 1
+			if actSeqs[seq] == len(seq):
+				completedSeqs.add(seq)
+				seqsToPrune.add(seq)
+		else:
+			# prune inactive sequences
+			seqsToPrune.add(seq)
 
-def predictRight(char,predictor,model):
-	predictions = getPredictions(predictor,model)
-	#sys.stdout.write('predictor: ' + predictor + '\n')
-	#sys.stdout.write('prediction: ' + repr(predictions) + '\n')
-	if predictions != None and char in predictions:
-		#sys.stdout.write('prediction correct!\n')
+	for seq in seqsToPrune:
+		actSeqs.pop(seq)
+
+	# add new active sequences that start with char
+	for seq in set(vocab.keys()) - set(actSeqs.keys()):
+		if seq == char:
+			completedSeqs.add(seq)
+		elif seq.startswith(char):
+			actSeqs[seq] = 1
+
+	return completedSeqs
+
+# returns True if seq predicts char strongly enough
+# that is, if P(char|seq) > k*P(char), k > 1.0
+def predicts(seq,char,vocab,seen):
+	if 1.0*seen.count(seq+char) / vocab[seq] > k*vocab[char]/len(seen):
 		return True
 
 	return False
 
-def getLongestPredictor(seen,model):
-	if seen != '':
-		predictor = seen[-1]
-		if len(seen) > 1:
-			for i in range(len(seen)-2,-1,-1):
-				seq = seen[i:len(seen)]
-				if seq in model:
-					predictor = seq
-				else:
-					break
+def updateVocab(char,seen,prevCompletedSeqs,vocab):
+	seqsToPrune = set([])
 
-	return predictor
+	# add char as an item if not in vocab already
+	if char not in vocab:
+		vocab[char] = 1
+	else:
+		vocab[char] += 1
+		# try to extend sequences that were completed just before char
+		for seq in prevCompletedSeqs:
+			# update frequency if seq+char already in vocab
+			if seq+char in vocab:
+				vocab[seq+char] += 1
+			# add seq+char as new vocab item, if seq strongly predicts char
+			elif predicts(seq,char,vocab,seen):
+				vocab[seq+char] = seen.count(seq+char)
 
-def updateModel(char,seen,predictor,predictionIsRight,model):
-	if seen != '':
-		for i in range(len(predictor)):
-			subseq = predictor[i:len(predictor)]
-			if subseq not in model:
-				model[subseq] = {}
-			tally(char,model[subseq])
+				# prune intermediate vocab items made redundant by extension
+				if vocab[seq] == vocab[seq+char]:
+					seqsToPrune.add(seq)
 
-			if predictionIsRight: # look for previous occurence of subseq in seen
-				newKey = subseq+char
-				if newKey not in model:
-					#sys.stdout.write('adding ' + newKey + ' as key\n')
-					charLastTime = seen[seen.index(newKey)+len(newKey)]
-					model[newKey] = {}
-					tally(charLastTime,model[newKey])
+		for seq in seqsToPrune:
+			vocab.pop(seq)
 
 def outputDic(dic):
-	for key in dic:
-		sys.stdout.write(key + ': ' + repr(dic[key]) + '\n')
+    for key in dic:
+    	sys.stdout.write(key + ': ' + repr(dic[key]) + '\n')
 
-seen = ''
-model = {}
+def outputSet(s):
+	sys.stdout.write(', '.join([repr(x) for x in list(s)]) + '\n')
+
+
 inputFileName = sys.argv[1]
 with open(inputFileName) as inputFile:
-	[predictor,prediction] = ['','']
+	seen = ''
+	vocab = {} # {sequence: frequency}
+	activeSequences = {} # { potential vocab item: end index of active prefix }
+	prevCompletedSequences = set([])
 	char = inputFile.read(1)
+	seen += char
 	while char != '':
-		#sys.stdout.write('char: ' + char + '\nseen: ' + seen + '\n')
-		predictionIsRight = predictRight(char,predictor,model)
-		updateModel(char,seen,predictor,predictionIsRight,model)
-		
-		seen += char
+		sys.stderr.write(seen + '\n')
+		newCompletedSequences = updateActiveSequences(activeSequences,char,vocab)
 
-		if predictionIsRight:
-			predictor += char
-		else:
-			predictor = getLongestPredictor(seen,model)
-		
+		sys.stdout.write('Active sequences:\n')
+		outputDic(activeSequences)
+		sys.stdout.write('\n')
+
+		updateVocab(char,seen,prevCompletedSequences,vocab)
+
+		sys.stdout.write('Vocab:\n')
+		outputDic(vocab)
+		sys.stdout.write('\n')
+
+		prevCompletedSequences = newCompletedSequences
 		char = inputFile.read(1)
-		#sys.stdout.write('\n')
-	
-	outputDic(model)
+		seen += char
+        
+outputDic(vocab)
+sys.stdout.write('\n')
