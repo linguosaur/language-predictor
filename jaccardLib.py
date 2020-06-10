@@ -77,6 +77,6 @@ def findSortedNeighbours(word, profileTable):
     for word2 in profileTable:
         if word2 != word:
             jaccardSimilarities[word2] = jaccardDistance(profileTable[word], profileTable[word2])
-    sortedNeighbours = sorted(jaccardSimilarities.iteritems(), key=operator.itemgetter(1))
+    sortedNeighbours = sorted(jaccardSimilarities.items(), key=operator.itemgetter(1))
 
     return sortedNeighbours
