@@ -35,34 +35,41 @@ def inWindow(pos):
 
     return False
 
-def update():
+def prune():
     global charsRead, posLastSeen, phrasesInWindowOrdered, phraseBook
     phrase, pos = phrasesInWindowOrdered[0]
     while not inWindow(pos):
         phrasesInWindowOrdered.pop(0)
-        if not inWindow(posLastSeen[phrase]):
+        if phrase in posLastSeen and not inWindow(posLastSeen[phrase]):
             del phraseBook[phrase]
             del posLastSeen[phrase]
         phrase, pos = phrasesInWindowOrdered[0]
 
-def readNextChar(textfile):
-    nextChar = textfile.read(BYTES_IN_CHAR)
-    if nextChar == None:
-        return None
+def recordInAll(phrase, startPos):
+    global phrasesInWindowOrdered, phraseBook, posLastSeen
+    tallyPhraseBook(phrase)
+    phrasesInWindowOrdered.append((phrase, startPos))
+    posLastSeen[phrase] = startPos
 
+def readNextChar(textfile):
     global charsRead, phrasesInWindowOrdered, phraseBook, posLastSeen, longestPrefix
-    candidate = longestPrefix + nextChar
     
-    tallyPhraseBook(candidate)
-    startPos = charsRead-len(candidate)+1
-    phrasesInWindowOrdered.append((candidate, startPos))
-    posLastSeen[candidate] = startPos
-    update()
-                           
-    if inPhraseBook(candidate):
-        longestPrefix = candidate
+    nextChar = textfile.read(BYTES_IN_CHAR)
+    startPos = charsRead-len(longestPrefix)
+    newPhrase = longestPrefix + nextChar
+    
+    if inPhraseBook(newPhrase):
+        longestPrefix = newPhrase
     else:
-        longestPrefix = ''
+        if len(longestPrefix) > 0:
+            recordInAll(longestPrefix, startPos)
+            longestPrefix = nextChar
+
+        if nextChar == None:
+            return None
+
+        recordInAll(newPhrase, startPos)
+        prune()
 
     charsRead += 1
 
@@ -75,6 +82,8 @@ def printPhraseBook():
 
 def processStream():
     while readNextChar(textFile) != None and charsRead <= 500000:
+##        sys.stderr.write(longestPrefix + '\t')
+##        sys.stderr.flush()
         if charsRead % 5000 == 0:
             sys.stderr.write(repr(charsRead) + ', ')
             sys.stderr.flush()
