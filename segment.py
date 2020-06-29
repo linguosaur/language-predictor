@@ -5,8 +5,8 @@ from math import log2
 
 phraseBook = set([])
 
-def codeLenPerChar(string, text):
-    return log2(len(text)/len(string)/text.count(string))/len(string)
+def codeLenPerChar(string, text, freq):
+    return log2(len(text)/len(string)/freq)/len(string)
 
 def segment(text):
     string = ''
@@ -15,11 +15,11 @@ def segment(text):
     for char in text:
         string += char
         freq = text.count(string)
-        thisCodeLenPerChar = codeLenPerChar(string, text)
+        thisCodeLenPerChar = codeLenPerChar(string, text, freq)
         if freq == 1 or lastCodeLenPerChar > 0.0 and thisCodeLenPerChar > lastCodeLenPerChar:
             phraseBook.add(string[:-1])
             string = char
-            lastCodeLenPerChar = codeLenPerChar(char, text)
+            lastCodeLenPerChar = codeLenPerChar(char, text, freq)
         else:
             lastCodeLenPerChar = thisCodeLenPerChar
             
