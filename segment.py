@@ -3,6 +3,7 @@
 import sys
 from math import log2
 
+freqs = {}
 phraseBook = set([])
 
 def codeLenPerChar(string, text, freq):
@@ -14,7 +15,14 @@ def segment(text):
     charsRead = 0
     for char in text:
         string += char
-        freq = text.count(string)
+        freq = 0
+        if string in freqs:
+            freq = freqs[string]
+        else:
+            freq = text.count(string)
+            if freq > 1:
+                freqs[string] = freq
+
         thisCodeLenPerChar = codeLenPerChar(string, text, freq)
         if freq == 1 or lastCodeLenPerChar > 0.0 and thisCodeLenPerChar > lastCodeLenPerChar:
             phraseBook.add(string[:-1])
@@ -24,11 +32,11 @@ def segment(text):
             lastCodeLenPerChar = thisCodeLenPerChar
             
         charsRead += 1
-        if charsRead % 50 == 0:
+        if charsRead % 1000 == 0:
             sys.stderr.write(repr(charsRead) + ', ')
             sys.stderr.flush()
-        if charsRead == 1000:
-            return
+#        if charsRead == 10000:
+#            return
 
 def printPhrases(phraseBook):
     for phrase in sorted(phraseBook):
